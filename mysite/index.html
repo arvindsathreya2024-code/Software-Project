@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nginx Watch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--tide:#0f2730;--panel:#17353f;--line:#2a4b57;--foam:#e9f3ef;--mist:#8fb0b4;--jade:#5fd3a0;--coral:#ff6b6b;--gold:#f2c14e;--ink:#12303a}
+*{box-sizing:border-box;margin:0}
+html{color-scheme:dark}
+body{background:var(--tide);color:var(--foam);font:16px/1.55 "Bricolage Grotesque",system-ui,sans-serif;min-height:100vh}
+.mono,pre,code,#term{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace}
+.wrap{max-width:1160px;margin:0 auto;padding:22px 22px 70px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.brand span{color:var(--gold)}
+.pill{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mist)}
+.pill i{width:9px;height:9px;border-radius:50%;background:var(--coral)}
+.pill.on i{background:var(--jade);animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 8px transparent}0%{box-shadow:0 0 0 0 var(--jade)}}
+.hero{padding:44px 0 10px}
+h1{font-size:clamp(30px,5.4vw,58px);line-height:1.04;letter-spacing:-.035em;font-weight:800;max-width:15em}
+h1.bad{color:var(--coral)}
+.sum{color:var(--mist);margin-top:12px;font-size:17px}
+#trace{width:100%;height:120px;margin-top:26px;display:block;overflow:visible}
+#trace path{fill:none;stroke:var(--jade);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round;stroke-dasharray:1400;stroke-dashoffset:1400;animation:draw 1.6s .2s forwards}
+#trace path.flat{stroke:var(--line);stroke-dasharray:none;animation:none}
+@keyframes draw{to{stroke-dashoffset:0}}
+#trace line{stroke:var(--coral);stroke-width:1;opacity:.5}
+#trace circle{fill:var(--jade)}#trace circle.e{fill:var(--coral)}
+#trace circle.now{stroke:var(--foam);stroke-width:2}
+.cols{display:grid;grid-template-columns:5fr 7fr;gap:44px;margin-top:46px}
+@media(max-width:860px){.cols,.rep{grid-template-columns:1fr}}
+h2{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.hint{color:var(--mist);font-size:14px;margin:2px 0 16px}
+.btns{display:grid;gap:12px}
+button{font:inherit;color:inherit;cursor:pointer;text-align:left;border:0;transition:transform .15s,box-shadow .15s}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.go{padding:16px 18px;border-radius:14px;font-weight:600;font-size:17px;display:block;width:100%}
+.go small{display:block;font-weight:400;font-size:13.5px;opacity:.8}
+.go:active{transform:scale(.98)}
+.g-ok{background:var(--jade);color:#06251a}.g-err{background:var(--coral);color:#2e0707}
+.go:hover{box-shadow:0 10px 28px -10px currentColor}
+#resp{margin-top:18px;padding:14px 16px;border-left:3px solid var(--line);white-space:pre-wrap;word-break:break-word;font-size:13px;color:var(--mist);min-height:92px}
+#resp b.ok{color:var(--jade)}#resp b.bad{color:var(--coral)}
+.sim{display:flex;gap:10px;align-items:flex-start;margin-top:16px;color:var(--mist);font-size:14px}
+.sim input{accent-color:var(--gold);margin-top:5px}
+#term{background:#0a1c23;border:1px solid var(--line);border-radius:14px;padding:14px;height:372px;overflow:auto;font-size:12.5px}
+.ln{display:flex;gap:12px;padding:3px 6px;border-radius:6px;white-space:nowrap}
+.ln.new{animation:flash 1.5s}
+@keyframes flash{from{background:rgba(242,193,78,.3)}}
+.t{color:var(--mist)}.p{flex:1;overflow:hidden;text-overflow:ellipsis}
+.c{font-weight:500}.c2{color:var(--jade)}.c4{color:var(--gold)}.c5{color:var(--coral)}
+.paper{background:var(--foam);color:var(--ink);border-radius:18px;padding:26px;margin-top:56px}
+.paper .hint{color:#4d6a70}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.rep{display:grid;grid-template-columns:230px 1fr;gap:26px;margin-top:8px}
+#list{display:flex;flex-direction:column;gap:6px;max-height:440px;overflow:auto}
+#list button{padding:9px 12px;border-radius:10px;font-size:14px;background:#d8e8e2}
+#list button.on{background:var(--ink);color:var(--foam)}
+#doc{max-height:440px;overflow:auto;padding-right:8px;line-height:1.65}
+#doc h2,#doc h3,#doc h4,#doc h5{font-size:18px;margin:18px 0 6px;color:var(--ink)}
+#doc h2{font-size:22px;margin-top:0}
+#doc p,#doc li{margin:5px 0}
+#doc ul,#doc ol{padding-left:22px}
+#doc code{background:#d3e4dd;padding:1px 6px;border-radius:5px;font-size:.88em}
+#doc pre{background:var(--ink);color:var(--foam);padding:14px;border-radius:10px;overflow:auto;font-size:12.5px;margin:10px 0}
+#doc hr{border:0;border-top:1px solid #c3d6cf;margin:14px 0}
+.empty{color:#4d6a70;padding:18px 0}
+.sev{padding:3px 12px;border-radius:99px;font-size:13px;font-weight:600}
+.sev.low{background:#bdecd8;color:#0c4a31}.sev.medium{background:#fde7a6;color:#6b4a00}.sev.high{background:#ffc9c9;color:#7a1111}
+#toast{position:fixed;right:18px;bottom:18px;background:var(--gold);color:#2b2100;padding:12px 18px;border-radius:12px;font-weight:600;transform:translateY(90px);transition:transform .35s}
+#toast.show{transform:none}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}#trace path{stroke-dashoffset:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Nginx <span>Watch</span></div>
+    <div class="pill" id="pill"><i></i><span id="pillT">Looking for the server</span></div>
+  </header>
+
+  <section class="hero">
+    <h1 id="head">Quiet so far. Send a request to see the trace.</h1>
+    <p class="sum" id="sum">Each dot below is one request. Height is how long the server took to answer.</p>
+    <svg id="trace" aria-label="Response time of recent requests"></svg>
+  </section>
+
+  <section class="cols">
+    <div>
+      <h2>Send a request</h2>
+      <p class="hint">Try both endpoints from your config.</p>
+      <div class="btns">
+        <button class="go g-ok" onclick="hit('/success')">Request /success<small>Should answer 200</small></button>
+        <button class="go g-err" onclick="hit('/error')">Request /error<small>Should answer 500 and start an AI report</small></button>
+      </div>
+      <div id="resp" class="mono">The answer from the server appears here.</div>
+      <label class="sim"><input type="checkbox" id="sim"><span>Send test traffic automatically, about 1 in 7 requests fails. Each failure can use your Gemini free quota.</span></label>
+    </div>
+    <div>
+      <h2>Access log</h2>
+      <p class="hint">Live lines from logs/access.log. New lines flash gold.</p>
+      <div id="term"><div class="t">Waiting for the log file...</div></div>
+    </div>
+  </section>
+
+  <section class="paper">
+    <div class="top"><h2>Incident reports from Gemini</h2><span id="sev"></span></div>
+    <p class="hint" id="cnt">Looking for reports...</p>
+    <div class="rep"><div id="list"></div><div id="doc"></div></div>
+  </section>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const st={n:0,ok:0,err:0,lat:[],hist:[]};
+
+/* ---------- send requests ---------- */
+async function hit(path){
+  const t=performance.now();
+  try{
+    const r=await fetch(path,{cache:'no-store'});
+    rec(path,r.status,Math.round(performance.now()-t),await r.text());
+  }catch(e){rec(path,0,0,'Could not reach the server. Is the container running?')}
+}
+function rec(path,code,ms,body){
+  st.n++; code===200?st.ok++:st.err++;
+  if(code) st.lat.push(ms);
+  st.hist.push({path,code,ms});
+  let b=body; try{b=JSON.stringify(JSON.parse(body),null,2)}catch{}
+  $('#resp').innerHTML=`<b class="${code===200?'ok':'bad'}">HTTP ${code||'failed'}</b>  GET ${esc(path)}  ${ms} ms\n\n${esc(b)}`;
+  const bad=code!==200, avg=st.lat.length?Math.round(st.lat.reduce((a,b)=>a+b)/st.lat.length):0;
+  $('#head').className=bad?'bad':'';
+  $('#head').textContent=bad?`${path} answered ${code||'nothing'}.`:`Healthy. ${path} answered in ${ms} ms.`;
+  $('#sum').textContent=`${st.n} request${st.n>1?'s':''} sent: ${st.ok} succeeded, ${st.err} failed. Average response ${avg} ms.`;
+  trace();
+}
+function trace(){
+  const svg=$('#trace'),w=svg.clientWidth||700,h=st.hist.slice(-40);
+  svg.setAttribute('viewBox',`0 0 ${w} 120`);
+  if(!h.length){svg.innerHTML=`<path class="flat" d="M0 100H${w}"/>`;return}
+  const mx=Math.max(30,...h.map(x=>x.ms)),step=w/39;
+  const pts=h.map((x,i)=>({x:w-6-(h.length-1-i)*step,y:100-Math.max(6,x.ms/mx*84),e:x.code!==200}));
+  const d=`M0 100H${pts[0].x}`+pts.map(p=>`L${p.x} ${p.y}`).join('');
+  svg.innerHTML=`<path d="${d}"/>`+pts.map((p,i)=>
+    (p.e?`<line x1="${p.x}" x2="${p.x}" y1="${p.y}" y2="100"/>`:'')+
+    `<circle class="${p.e?'e ':''}${i===pts.length-1?'now':''}" cx="${p.x}" cy="${p.y}" r="${i===pts.length-1?6:4}"/>`).join('');
+}
+setInterval(()=>{if($('#sim').checked)hit(Math.random()<.14?'/error':'/success')},2500);
+
+/* ---------- live access log ---------- */
+let prev=null;
+function setOnline(on){$('#pill').className='pill'+(on?' on':'');$('#pillT').textContent=on?'Server is reachable':'Server not reachable. Start the Docker container.'}
+async function pollLogs(){
+  try{
+    const r=await fetch('/logs/access.log',{headers:{Range:'bytes=-6000'},cache:'no-store'});
+    if(!r.ok&&r.status!==416) throw 0;
+    setOnline(true);
+    let lines=r.status===416?[]:(await r.text()).split('\n').filter(Boolean);
+    const cr=r.headers.get('Content-Range'),start=cr?+cr.match(/bytes (\d+)-/)[1]:0;
+    if(start>0&&lines.length) lines.shift();
+    if(!lines.length){ if(prev===null)$('#term').innerHTML='<div class="t">No requests yet. Click a button on the left.</div>'; return}
+    const idx=prev===null?-1:lines.lastIndexOf(prev);
+    const fresh=prev===null?lines.length:(idx<0?0:idx+1);
+    const show=lines.slice(-14),off=lines.length-show.length;
+    $('#term').innerHTML=show.map((l,i)=>{
+      const m=l.match(/\[([^\]]+)\] "(\S+) (\S+) [^"]*" (\d{3})/);
+      const cls='ln'+(off+i>=fresh?' new':'');
+      if(!m) return `<div class="${cls} t">${esc(l)}</div>`;
+      return `<div class="${cls}"><span class="t">${m[1].slice(12,20)}</span><span>${m[2]}</span><span class="p">${esc(m[3])}</span><span class="c c${m[4][0]}">${m[4]}</span></div>`}).join('');
+    prev=lines[lines.length-1];
+    $('#term').scrollTop=1e6;
+  }catch{ setOnline(false) }
+}
+setInterval(pollLogs,2000);
+
+/* ---------- AI reports ---------- */
+let files=[],cur=null,first=true;
+const lab=n=>{const m=n.match(/_(\d{4})(\d\d)(\d\d)_(\d\d)(\d\d)(\d\d)/);return m?`${m[3]}/${m[2]}/${m[1]} at ${m[4]}:${m[5]}:${m[6]}`:n};
+function md(s){
+  const inl=t=>esc(t).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+  let out='',code=false,list=null,m;
+  const close=()=>{if(list){out+=`</${list}>`;list=null}};
+  for(const raw of s.split('\n')){
+    if(raw.trim().startsWith('```')){close();out+=code?'</pre>':'<pre>';code=!code;continue}
+    if(code){out+=esc(raw)+'\n';continue}
+    if(m=raw.match(/^(#{1,4})\s+(.*)/)){close();const n=m[1].length+1;out+=`<h${n}>${inl(m[2])}</h${n}>`}
+    else if(m=raw.match(/^\s*[-*]\s+(.*)/)){if(list!=='ul'){close();out+='<ul>';list='ul'}out+=`<li>${inl(m[1])}</li>`}
+    else if(m=raw.match(/^\s*\d+\.\s+(.*)/)){if(list!=='ol'){close();out+='<ol>';list='ol'}out+=`<li>${inl(m[1])}</li>`}
+    else if(/^---+$/.test(raw.trim())){close();out+='<hr>'}
+    else if(!raw.trim()){close()}
+    else{close();out+=`<p>${inl(raw)}</p>`}
+  }
+  close();return out+(code?'</pre>':'');
+}
+function renderList(){
+  $('#list').innerHTML=files.map(n=>`<button class="${n===cur?'on':''}" onclick="openReport('${n}')">${lab(n)}</button>`).join('');
+}
+async function openReport(name){
+  cur=name;renderList();
+  const t=await (await fetch('/reports/'+name,{cache:'no-store'})).text();
+  $('#doc').innerHTML=md(t);
+  const m=t.match(/severity[\s\S]{0,40}?\b(low|medium|high)\b/i);
+  $('#sev').innerHTML=m?`<span class="sev ${m[1].toLowerCase()}">${m[1]} severity</span>`:'';
+}
+function toast(t){const e=$('#toast');e.textContent=t;e.className='show';setTimeout(()=>e.className='',4000)}
+async function pollReports(){
+  try{
+    const f=(await (await fetch('/reports/',{cache:'no-store'})).json())
+      .filter(x=>/^report_.*\.md$/.test(x.name)).map(x=>x.name).sort().reverse();
+    $('#cnt').textContent=f.length?`${f.length} report${f.length>1?'s':''} so far. The newest is shown.`:'No reports yet.';
+    if(f.join()!==files.join()){
+      const isNew=!first&&f[0]&&f[0]!==files[0];
+      files=f;
+      if(!f.length){renderList();$('#doc').innerHTML='<div class="empty">Click Request /error. The monitor spots the 500, asks Gemini what went wrong, and the report shows up here.</div>'}
+      else if(isNew||cur===null){if(isNew)toast('A new AI report is ready');await openReport(f[0])}
+      else renderList();
+    }
+    first=false;
+  }catch{
+    if(!files.length)$('#doc').innerHTML='<div class="empty">Reports folder not connected. Add the reports mount and the /reports/ block from the setup steps, then restart the container.</div>'
+  }
+}
+setInterval(pollReports,4000);
+
+trace();pollLogs();pollReports();
+addEventListener('resize',trace);
+</script>
+</body>
+</html>
